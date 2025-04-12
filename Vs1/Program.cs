@@ -7,10 +7,15 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 
 record VsInstanceInfo(DTE2 VsDte, int pid);
+
 internal class Program
 {
     static void Main()
     {
+        if (ShellUtils.ShouldUseForwardSlashes())
+        {
+            Console.WriteLine("BASH!");
+        }
         foreach (var vsInfo in GetRunningVisualStudios())
         {
             try
@@ -19,7 +24,7 @@ internal class Program
                 var sln = string.IsNullOrEmpty(solutionName) ? "No solution loaded" : $"{solutionName}";
                 var branch = GetGitBranchForSolution(vsInfo.VsDte);
 
-                Console.WriteLine($"{vsInfo.pid,-7}{sln} {branch}");
+                Console.WriteLine($"{vsInfo.pid,-7}{GetHyperlinkAnsiWithTooltip(sln, "http://ibm.com", "Click me")} {branch}");
             }
             catch (Exception ex)
             {
@@ -27,6 +32,18 @@ internal class Program
             }
 
         }
+    }
+
+    static string GetHyperlinkAnsiWithTooltip(string text, string url, string tooltip = "", string style = "1;34;4")
+    {
+        // If tooltip is provided, format the link with it as the URI label
+        string encodedTooltip = string.IsNullOrEmpty(tooltip) ? url : $"{url}#{tooltip}";
+        return $"\u001b]8;label={tooltip};{url}\u0007\u001b[{style}m{text}\u001b[0m\u001b]8;;\u0007";
+    }
+
+    private static string GetHyperlinkAnsi(string text, string url, string colour = "1;34")
+    {
+        return $"\u001b]8;;{url}\u0007\u001b[{colour}m{text}\u001b[0m\u001b]8;;\u0007";
     }
 
     static VsInstanceInfo[] GetRunningVisualStudios()
@@ -40,8 +57,7 @@ internal class Program
 
         while (monikerEnumerator.Next(1, monikers, fetched) == 0)
         {
-            IBindCtx ctx;
-            CreateBindCtx(0, out ctx);
+            CreateBindCtx(0, out IBindCtx ctx);
 
             monikers[0].GetDisplayName(ctx, null, out string name);
 
