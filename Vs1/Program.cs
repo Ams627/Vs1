@@ -1,4 +1,5 @@
 ﻿using EnvDTE80;
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,31 +7,56 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 
+
 record VsInstanceInfo(DTE2 VsDte, int pid);
 
 internal class Program
 {
     static void Main()
     {
-        if (ShellUtils.ShouldUseForwardSlashes())
+        var bash = ShellUtils.ShouldUseForwardSlashes();
+
+        var runningVisualStudios = GetRunningVisualStudios();
+
+        var path = Path.Combine(Path.GetTempPath(), "Vs1");
+        Directory.CreateDirectory(path);
+        foreach (var v in runningVisualStudios)
         {
-            Console.WriteLine("BASH!");
+            var pid = v.pid;
+            var text = $""""
+                Set WshShell = CreateObject("WScript.Shell")
+                WshShell.Run """front.exe"" {pid}", 0, False
+                """";
+            var filename = Path.Combine(path, $"front{pid}.vbs");
+            File.WriteAllText(filename, text);
         }
+
+        var maxPid = runningVisualStudios.Select(x => x.pid).Max();
+        var digits = maxPid.ToString().Length;
+
         foreach (var vsInfo in GetRunningVisualStudios())
         {
             try
             {
                 string solutionName = vsInfo.VsDte.Solution?.FullName;
                 var sln = string.IsNullOrEmpty(solutionName) ? "No solution loaded" : $"{solutionName}";
-                var branch = GetGitBranchForSolution(vsInfo.VsDte);
+                sln = bash ? ShellUtils.Bashify(sln) : sln;
 
-                Console.WriteLine($"{vsInfo.pid,-7}{GetHyperlinkAnsiWithTooltip(sln, "http://ibm.com", "Click me")} {branch}");
+                var branch = GetGitBranchForSolution(vsInfo.VsDte);
+                if (string.IsNullOrEmpty(branch))
+                {
+                    branch = "not a git repo";
+                }
+
+                var padding = new string(' ', digits + 1 - vsInfo.pid.ToString().Length);
+
+                var linkFileName = Path.Combine(path, $"front{vsInfo.pid}.vbs").Replace("\\", "/");
+                Console.WriteLine($"{GetHyperlinkAnsi($"{vsInfo.pid}", $@"file:///{linkFileName}", "38;2;255;102;255")}{padding}{GetHyperlinkAnsiWithTooltip(sln, "http://ibm.com", "Click me")} {branch}");
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Error accessing DTE: " + ex.Message);
             }
-
         }
     }
 

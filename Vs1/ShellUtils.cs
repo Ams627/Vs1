@@ -5,6 +5,22 @@ using System.Management;
 
 public static class ShellUtils
 {
+    public static string Bashify(string windowsPath)
+    {
+        if (string.IsNullOrWhiteSpace(windowsPath))
+            return string.Empty;
+
+        string normalized = windowsPath.Replace('\\', '/');
+
+        // Match "C:" or any drive letter at the beginning
+        if (normalized.Length >= 2 && normalized[1] == ':')
+        {
+            char driveLetter = char.ToLower(normalized[0]);
+            normalized = "/" + driveLetter + normalized.Substring(2);
+        }
+
+        return normalized;
+    }
     public static string GetFirstShellAncestorName()
     {
         var knownShells = new[] { "bash", "cmd", "powershell", "pwsh", "sh", "mintty", "zsh" };

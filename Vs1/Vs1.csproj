@@ -5,6 +5,7 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <DebugType>Embedded</DebugType>
     <LangVersion>Latest</LangVersion>
+    <BinDir>c:\bin</BinDir>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="costura.fody" Version="6.0.0">
@@ -15,4 +16,7 @@
   <ItemGroup>
     <Reference Include="System.Management" />
   </ItemGroup>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="echo copying $(TargetPath) to $(BinDir) &amp;&amp; copy $(TargetPath) $(BinDir)" />
+  </Target>
 </Project>
